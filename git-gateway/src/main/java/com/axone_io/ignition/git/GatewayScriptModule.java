@@ -75,7 +75,7 @@ public class GatewayScriptModule extends AbstractScriptModule {
     protected boolean commitImpl(String projectName, String userName, List<String> changes, String message) {
         try (Git git = getGit(getProjectFolderPath(projectName))) {
             for (String change : changes) {
-                git.add().addFilepattern(change).call();
+                git.add().addFilepattern(".").call();
                 git.add().setUpdate(true).addFilepattern(change).call();
             }
 
@@ -102,14 +102,18 @@ public class GatewayScriptModule extends AbstractScriptModule {
             Status status = git.status().call();
 
             Set<String> missing = status.getMissing();
+            logger.warn(missing.toString());
             uncommittedChangesBuilder(projectName, missing, "Deleted", changes, builder);
 
             Set<String> uncommittedChanges = status.getUncommittedChanges();
+            logger.warn(uncommittedChanges.toString());
             uncommittedChangesBuilder(projectName, uncommittedChanges, "Uncommitted", changes, builder);
 
             Set<String> untracked = status.getUntracked();
+            logger.warn(untracked.toString());
             uncommittedChangesBuilder(projectName, untracked, "Created", changes, builder);
 
+            logger.warn(changes.toString());
         } catch (Exception e) {
             logger.info(e.toString(), e);
         }

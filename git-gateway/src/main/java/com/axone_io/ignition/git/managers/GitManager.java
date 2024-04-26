@@ -60,7 +60,7 @@ public class GitManager {
 
     public static Path getProjectFolderPath(String projectName) {
         Path dataDir = getDataFolderPath();
-        return dataDir.resolve("projects").resolve(projectName);
+        return dataDir.resolve("projects");
     }
 
     public static Path getDataFolderPath() {
