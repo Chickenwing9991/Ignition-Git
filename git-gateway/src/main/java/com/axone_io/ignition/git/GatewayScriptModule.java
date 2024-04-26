@@ -146,6 +146,7 @@ public class GatewayScriptModule extends AbstractScriptModule {
         GitProjectsConfigRecord gitProjectsConfigRecord = getGitProjectConfigRecord(projectName);
 
         Path path = projectFolderPath.resolve(".git");
+        logger.warn("ProjectPath:"+path.toString());
 
         if (!Files.exists(path)) {
             String defaultBranch = GitCommissioningUtils.config != null ? GitCommissioningUtils.config.getInitDefaultBranch() : null;
@@ -167,6 +168,7 @@ public class GatewayScriptModule extends AbstractScriptModule {
                 String branch = git.getRepository().getBranch();
                 pushCommand.setRemote("origin").setRefSpecs(new RefSpec(branch)).call();
             } catch (Exception e) {
+                logger.warn(e.toString());
                 logger.warn("An error occurred while setting up local repo for '" + projectName + "' project.");
             }
         }
@@ -174,6 +176,7 @@ public class GatewayScriptModule extends AbstractScriptModule {
 
     private Path getProjectFolderPath(String projectName) {
         Path dataDir = context.getSystemManager().getDataDir().toPath();
-        return dataDir.resolve("projects").resolve(projectName);
+        logger.warn(dataDir.toString());
+        return dataDir.resolve("projects");
     }
 }
