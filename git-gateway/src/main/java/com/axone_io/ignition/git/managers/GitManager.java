@@ -97,8 +97,12 @@ public class GitManager {
 
     public static void setCommitAuthor(CommitCommand command, String projectName, String userName) {
         try {
+            logger.info("UserName: "+userName);
             GitProjectsConfigRecord gitProjectsConfigRecord = getGitProjectConfigRecord(projectName);
             GitReposUsersRecord user = getGitReposUserRecord(gitProjectsConfigRecord, userName);
+
+            logger.info("Git User: "+user.toString());
+            logger.info("Git UserName: "+user.getEmail());
             command.setAuthor("", user.getEmail());
         } catch (Exception e) {
             logger.error("An error occurred while setting up commit author.", e);
@@ -114,7 +118,7 @@ public class GitManager {
         if (gitProjectsConfigRecord == null) {
             throw new Exception("Git Project not configured.");
         }
-
+        logger.warn(gitProjectsConfigRecord.toString());
         return gitProjectsConfigRecord;
     }
 
@@ -153,16 +157,18 @@ public class GitManager {
                                                  Set<String> updates,
                                                  String type,
                                                  List<String> changes,
-                                                 DatasetBuilder builder) {
+                                                 DatasetBuilder builder,
+                                                 String userName) {
         for (String update : updates) {
+            logger.info("Change Builder: "+updates.toString());
             String[] rowData = new String[3];
-            String actor = "unknown";
+            String actor = userName;
             String path = update;
             boolean toAdd = true;
-
             if (hasActor(path)) {
                 String[] pathSplitted = update.split("/");
                 path = String.join("/", Arrays.copyOf(pathSplitted, pathSplitted.length - 1));
+                logger.info("Path: "+path);
 
                 actor = getActor(projectName, path);
             }
@@ -277,52 +283,60 @@ public class GitManager {
     public static boolean isUpdatedResource(String projectName, String resourcePath){
         boolean isUpdatedResource;
         Path projectPath = getProjectFolderPath(projectName);
-        String filePath = projectPath.toAbsolutePath() + "\\" +resourcePath.replace("/", "\\");
-
+        String filePath = projectPath.toAbsolutePath() + "/" +resourcePath.replace("/", "/");
+        logger.info("FilePath: "+filePath);
+        
         try (Repository repository = getGit(projectPath).getRepository()) {
-
-            // Get the ObjectId of the latest commit
-            ObjectId headId = repository.resolve("HEAD");
-
-            // Use RevWalk to traverse the commit history
-            try (RevWalk revWalk = new RevWalk(repository)) {
-                RevCommit commit = revWalk.parseCommit(headId);
-
-                // Get the tree of the commit
-                RevTree tree = commit.getTree();
-
-                // Use TreeWalk to traverse the files in the tree
-                try (TreeWalk treeWalk = new TreeWalk(repository)) {
-                    treeWalk.addTree(tree);
-                    treeWalk.setRecursive(true);
-                    treeWalk.setFilter(PathFilter.create(resourcePath));
-
-                    // Get the ObjectId of the file in the commit
-                    if (!treeWalk.next()) {
-                        throw new IllegalStateException("Did not find expected file " + resourcePath);
+            Path path = Path.of(filePath);
+            if (Files.exists(path)) {
+                logger.info("Repo: "+repository.toString());
+    
+                // Get the ObjectId of the latest commit
+                ObjectId headId = repository.resolve("HEAD");
+                logger.info("HeadID: "+headId.toString());
+    
+                // Use RevWalk to traverse the commit history
+                try (RevWalk revWalk = new RevWalk(repository)) {
+                    RevCommit commit = revWalk.parseCommit(headId);
+    
+                    // Get the tree of the commit
+                    RevTree tree = commit.getTree();
+    
+                    // Use TreeWalk to traverse the files in the tree
+                    try (TreeWalk treeWalk = new TreeWalk(repository)) {
+                        treeWalk.addTree(tree);
+                        treeWalk.setRecursive(true);
+                        treeWalk.setFilter(PathFilter.create(resourcePath));
+    
+                        // Get the ObjectId of the file in the commit
+                        if (!treeWalk.next()) {
+                            throw new IllegalStateException("Did not find expected file " + resourcePath);
+                        }
+                        ObjectId objectId = treeWalk.getObjectId(0);
+    
+                        // Get the contents of the file in the commit
+                        ByteArrayOutputStream out = new ByteArrayOutputStream();
+                        try (ObjectReader reader = repository.newObjectReader()) {
+                            reader.open(objectId).copyTo(out);
+                        }
+                        Gson g = new Gson();
+    
+                        String contentBefore = out.toString();
+                        JsonObject jsonBefore = (JsonObject) g.fromJson(contentBefore, JsonElement.class);
+                        jsonBefore.remove("files");
+                        jsonBefore.remove("attributes");
+    
+                        String contentAfter = new String(Files.readAllBytes(Paths.get(filePath)));
+                        JsonObject jsonAfter = (JsonObject) g.fromJson(contentAfter, JsonElement.class);
+                        jsonAfter.remove("files");
+                        jsonAfter.remove("attributes");
+    
+    
+                        isUpdatedResource = !jsonBefore.equals(jsonAfter);
                     }
-                    ObjectId objectId = treeWalk.getObjectId(0);
-
-                    // Get the contents of the file in the commit
-                    ByteArrayOutputStream out = new ByteArrayOutputStream();
-                    try (ObjectReader reader = repository.newObjectReader()) {
-                        reader.open(objectId).copyTo(out);
-                    }
-                    Gson g = new Gson();
-
-                    String contentBefore = out.toString();
-                    JsonObject jsonBefore = (JsonObject) g.fromJson(contentBefore, JsonElement.class);
-                    jsonBefore.remove("files");
-                    jsonBefore.remove("attributes");
-
-
-                    String contentAfter = new String(Files.readAllBytes(Paths.get(filePath)));
-                    JsonObject jsonAfter = (JsonObject) g.fromJson(contentAfter, JsonElement.class);
-                    jsonAfter.remove("files");
-                    jsonAfter.remove("attributes");
-
-                    isUpdatedResource = !jsonBefore.equals(jsonAfter);
                 }
+            } else {
+                return true;
             }
         } catch (IOException e) {
             throw new RuntimeException(e);

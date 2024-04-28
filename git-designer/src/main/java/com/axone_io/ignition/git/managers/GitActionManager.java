@@ -5,6 +5,7 @@ import com.axone_io.ignition.git.DesignerHook;
 import com.inductiveautomation.ignition.common.Dataset;
 import com.inductiveautomation.ignition.common.project.ChangeOperation;
 import com.inductiveautomation.ignition.common.project.resource.ProjectResourceId;
+import com.inductiveautomation.ignition.common.util.LoggerEx;
 
 import javax.swing.*;
 import java.util.ArrayList;
@@ -16,11 +17,15 @@ import static com.axone_io.ignition.git.actions.GitBaseAction.handleCommitAction
 
 public class GitActionManager {
     static CommitPopup commitPopup;
+    private final static LoggerEx logger = LoggerEx.newBuilder().build(GitActionManager.class);
 
     public static Object[][] getCommitPopupData(String projectName, String userName) {
         List<ChangeOperation> changes = DesignerHook.changes;
+        logger.info("GitActionManger: "+changes.toString());
 
         Dataset ds = rpc.getUncommitedChanges(projectName, userName);
+        logger.info("UncommitedChanges: "+ds.toString());
+
         Object[][] data = new Object[ds.getRowCount()][];
 
         List<String> resourcesChangedId = new ArrayList<>();
@@ -41,7 +46,9 @@ public class GitActionManager {
     }
 
     public static void showCommitPopup(String projectName, String userName) {
+        logger.info("Getting Popup Data");
         Object[][] data = GitActionManager.getCommitPopupData(projectName, userName);
+        logger.info("Got Popup Data");
         if (commitPopup != null) {
             commitPopup.setData(data);
             commitPopup.setVisible(true);

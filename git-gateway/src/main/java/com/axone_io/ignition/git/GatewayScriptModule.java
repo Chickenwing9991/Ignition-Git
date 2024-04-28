@@ -57,11 +57,13 @@ public class GatewayScriptModule extends AbstractScriptModule {
         try (Git git = getGit(getProjectFolderPath(projectName))) {
             PushCommand push = git.push();
 
-            setAuthentication(push, projectName, userName);
+           //setAuthentication(push, projectName, userName);
 
             Iterable<PushResult> results = push.setPushAll().setPushTags().call();
+            logger.warn(results.toString());
             for (PushResult result : results) {
                 logger.trace(result.getMessages());
+                logger.warn(result.getMessages());
             }
 
         } catch (GitAPIException e) {
@@ -75,7 +77,8 @@ public class GatewayScriptModule extends AbstractScriptModule {
     protected boolean commitImpl(String projectName, String userName, List<String> changes, String message) {
         try (Git git = getGit(getProjectFolderPath(projectName))) {
             for (String change : changes) {
-                git.add().addFilepattern(".").call();
+                logger.warn("Changes: "+changes.toString());
+                git.add().addFilepattern(change).call();
                 git.add().setUpdate(true).addFilepattern(change).call();
             }
 
@@ -102,18 +105,18 @@ public class GatewayScriptModule extends AbstractScriptModule {
             Status status = git.status().call();
 
             Set<String> missing = status.getMissing();
-            logger.warn(missing.toString());
-            uncommittedChangesBuilder(projectName, missing, "Deleted", changes, builder);
+            logger.warn("Missing: "+missing.toString());
+            uncommittedChangesBuilder(projectName, missing, "Deleted", changes, builder, userName);
 
             Set<String> uncommittedChanges = status.getUncommittedChanges();
-            logger.warn(uncommittedChanges.toString());
-            uncommittedChangesBuilder(projectName, uncommittedChanges, "Uncommitted", changes, builder);
+            logger.warn("Uncommited: "+uncommittedChanges.toString());
+            uncommittedChangesBuilder(projectName, uncommittedChanges, "Uncommitted", changes, builder, userName);
 
             Set<String> untracked = status.getUntracked();
-            logger.warn(untracked.toString());
-            uncommittedChangesBuilder(projectName, untracked, "Created", changes, builder);
+            logger.warn("Untracked: "+untracked.toString());
+            uncommittedChangesBuilder(projectName, untracked, "Created", changes, builder, userName);
 
-            logger.warn(changes.toString());
+            logger.warn("Uncommited Changes: "+changes.toString());
         } catch (Exception e) {
             logger.info(e.toString(), e);
         }

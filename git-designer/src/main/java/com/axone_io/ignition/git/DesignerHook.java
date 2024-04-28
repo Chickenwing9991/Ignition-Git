@@ -7,6 +7,7 @@ import com.inductiveautomation.ignition.common.BundleUtil;
 import com.inductiveautomation.ignition.common.SessionInfo;
 import com.inductiveautomation.ignition.common.licensing.LicenseState;
 import com.inductiveautomation.ignition.common.project.ChangeOperation;
+import com.inductiveautomation.ignition.common.util.LoggerEx;
 import com.inductiveautomation.ignition.designer.gui.DesignerToolbar;
 import com.inductiveautomation.ignition.designer.gui.StatusBar;
 import com.inductiveautomation.ignition.designer.model.DesignerContext;
@@ -28,6 +29,8 @@ public class DesignerHook extends AbstractDesignerModuleHook {
             "com.axone_io.ignition.git",
             GitScriptInterface.class
     );
+
+    private final LoggerEx logger = LoggerEx.newBuilder().build(getClass());
     public static List<ChangeOperation> changes = new ArrayList<>();
     public static DesignerContext context;
     public static String projectName;
@@ -55,6 +58,8 @@ public class DesignerHook extends AbstractDesignerModuleHook {
 
         Optional<SessionInfo> sessionInfo = context.getResourceEditManager().getCurrentSessionInfo();
         userName = sessionInfo.isPresent() ? sessionInfo.get().getUsername() : "";
+
+        logger.info("Session User: "+userName.toString());
 
         rpc.setupLocalRepo(projectName, userName);
 
